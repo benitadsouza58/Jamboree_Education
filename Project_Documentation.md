@@ -57,3 +57,29 @@ The dataset contains both numerical and categorical variables. Some categorical 
 The numerical variables exhibit different distributions and ranges. Several financial attributes are positively skewed and contain extreme observations. Median-based statistics may therefore be more representative than mean-based statistics for certain variables.
 
 Outliers should not be removed blindly because extreme financial values may represent genuine borrower characteristics.
+
+## 5. Univariate Analysis – Categorical Variables
+
+The categorical variable analysis reveals the following:
+
+1. **Loan Term:** 36-month loans account for approximately 76.26% of the dataset, indicating a preference for shorter loan tenures.
+
+2. **Loan Grade:** Grade B is the most frequently assigned grade, followed by grades C and A.
+
+3. **Sub-grade:** B3 is the most common sub-grade.
+
+4. **Employment Length:** Borrowers with 10 or more years of employment form the largest employment-length category.
+
+5. **Home Ownership:** MORTGAGE is the most common home ownership category, representing approximately 50.08% of borrowers.
+
+6. **Verification Status:** Verified is the most frequent individual category, followed by Source Verified and Not Verified.
+
+7. **Loan Purpose:** Debt consolidation is the most common loan purpose, accounting for approximately 59.21% of records. Credit card repayment is the second most common purpose.
+
+8. **Initial Listing Status:** The F category is more common than W.
+
+9. **Application Type:** Individual applications dominate the dataset, representing approximately 99.82% of records.
+
+### Overall Inference
+
+The dataset primarily consists of individual borrowers with mortgage-based home ownership, relatively long employment histories and 36-month loan terms. Debt consolidation is the predominant reason for borrowing.
