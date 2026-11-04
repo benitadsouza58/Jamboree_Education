@@ -36,3 +36,24 @@ The dataset contains both numerical and categorical variables. Some categorical 
 3. Missing values need to be investigated and treated before model building.
 4. Class imbalance makes recall, precision and ROC-AUC important evaluation metrics.
 5. Date-related and high-cardinality variables require appropriate feature engineering and preprocessing.
+
+## 4. Univariate Analysis – Numerical Variables
+
+### Continuous Variables
+
+- Annual income exhibits significant positive skewness, indicating that a small proportion of borrowers report exceptionally high incomes.
+- DTI and revolving balance also exhibit substantial positive skewness.
+- Several variables contain potential outliers, particularly annual income, revolving balance, installment and DTI.
+- These observations require further investigation before deciding on outlier treatment.
+
+### Count-based Variables
+
+- The majority of borrowers have zero public derogatory records.
+- Public records are concentrated around zero, with fewer borrowers having multiple derogatory records.
+- This variable may provide useful information for assessing borrower creditworthiness.
+
+### Key Observations
+
+The numerical variables exhibit different distributions and ranges. Several financial attributes are positively skewed and contain extreme observations. Median-based statistics may therefore be more representative than mean-based statistics for certain variables.
+
+Outliers should not be removed blindly because extreme financial values may represent genuine borrower characteristics.
