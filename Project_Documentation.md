@@ -70,7 +70,7 @@ The categorical variable analysis reveals the following:
 
 4. **Employment Length:** Borrowers with 10 or more years of employment form the largest employment-length category.
 
-5. **Home Ownership:** MORTGAGE is the most common home ownership category, representing approximately 50.08% of borrowers.
+5. **Home Ownership:** MORTGAGE is the most common home ownership category, representing approximately 50.08% of borrowers. Home ownership provides additional information about the borrower's financial circumstances and potential existing housing obligations.
 
 6. **Verification Status:** Verified is the most frequent individual category, followed by Source Verified and Not Verified.
 
