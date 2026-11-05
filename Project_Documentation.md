@@ -83,3 +83,25 @@ The categorical variable analysis reveals the following:
 ### Overall Inference
 
 The dataset primarily consists of individual borrowers with mortgage-based home ownership, relatively long employment histories and 36-month loan terms. Debt consolidation is the predominant reason for borrowing.
+
+### Bivariate Analysis – Loan Grade vs Loan Status
+
+A cross-tabulation was performed to examine the relationship between LoanTap-assigned grades and loan repayment outcomes.
+
+The analysis reveals a clear trend:
+
+- Grade A has the highest repayment rate of 93.71% and the lowest charge-off rate of 6.29%.
+- Grade G has the lowest repayment rate of 52.16% and the highest charge-off rate of 47.84%.
+- The charge-off rate consistently increases as the loan grade moves from A to G.
+
+**Inference:**
+
+Loan grade demonstrates a strong association with loan repayment behaviour. Borrowers assigned better grades have historically shown higher repayment rates, while borrowers with lower grades have demonstrated higher default risk.
+
+This indicates that LoanTap's internal grading system may be an important indicator of creditworthiness.
+
+**Business Recommendation:**
+
+LoanTap can use loan grades as one of the inputs in its credit risk assessment process. Applicants with lower grades may require additional scrutiny, stricter eligibility criteria or more conservative lending terms.
+
+However, loan grade should not be the sole determinant of loan approval.
