@@ -84,7 +84,9 @@ The categorical variable analysis reveals the following:
 
 The dataset primarily consists of individual borrowers with mortgage-based home ownership, relatively long employment histories and 36-month loan terms. Debt consolidation is the predominant reason for borrowing.
 
-### Bivariate Analysis – Loan Grade vs Loan Status
+## 6. Bivariate Analysis 
+
+### Loan Grade vs Loan Status
 
 A cross-tabulation was performed to examine the relationship between LoanTap-assigned grades and loan repayment outcomes.
 
@@ -106,7 +108,7 @@ LoanTap can use loan grades as one of the inputs in its credit risk assessment p
 
 However, loan grade should not be the sole determinant of loan approval.
 
-### Bivariate Analysis – Interest Rate vs Loan Status
+### Interest Rate vs Loan Status
 
 The relationship between interest rate and loan repayment status was examined using box plots and descriptive statistics.
 
