@@ -127,3 +127,34 @@ However, the distributions overlap, indicating that interest rate alone cannot a
 **Business Recommendation:**
 
 Interest rate should be considered alongside other borrower characteristics, such as income, DTI, loan amount and credit history, when assessing creditworthiness.
+
+### Relationship Between Loan Amount and Monthly Installment
+
+The scatterplot indicates a strong positive linear relationship between loan amount and monthly installment. The correlation coefficient is **0.9539**, suggesting that borrowers with higher loan amounts generally have higher monthly repayment obligations.
+
+This relationship is expected because the monthly installment is calculated based on the loan amount, interest rate and repayment tenure.
+
+**Inference:** Loan amount and monthly installment contain overlapping information. Since they are highly correlated, their combined use in Logistic Regression may introduce multicollinearity. This will be considered during feature selection and model building.
+
+### Relationship Between Annual Income and Loan Status
+
+The boxplot and summary statistics indicate that borrowers who fully paid their loans generally had higher annual incomes than borrowers who were charged off.
+
+The median annual income for Fully Paid borrowers was $65,000, compared with $59,000 for Charged Off borrowers. The mean income was also higher for Fully Paid borrowers ($75,829.95) than for Charged Off borrowers ($67,535.54).
+
+The boxplot shows several extreme income outliers in both groups. These values compress the central portion of the plot and make direct visual comparison difficult.
+
+**Inference:** Annual income may be a useful predictor of loan repayment behaviour. Borrowers with higher incomes appear to have a somewhat lower incidence of charged-off loans. However, this relationship needs to be evaluated alongside other borrower and loan characteristics.
+
+### Relationship Between Debt-to-Income Ratio (DTI) and Loan Status
+
+The analysis indicates that borrowers who were charged off had higher DTI values than borrowers who fully paid their loans.
+
+- Median DTI for Charged Off borrowers: 19.34
+- Median DTI for Fully Paid borrowers: 16.34
+- Mean DTI for Charged Off borrowers: 19.66
+- Mean DTI for Fully Paid borrowers: 16.82
+
+The maximum DTI values are unusually high in both groups, suggesting the presence of extreme observations that require further investigation.
+
+**Inference:** DTI may be a useful predictor of loan repayment behaviour. Borrowers with higher debt obligations relative to their income appear to have a higher incidence of charged-off loans. This is an association and does not establish causation.
