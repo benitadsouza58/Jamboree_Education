@@ -105,3 +105,25 @@ This indicates that LoanTap's internal grading system may be an important indica
 LoanTap can use loan grades as one of the inputs in its credit risk assessment process. Applicants with lower grades may require additional scrutiny, stricter eligibility criteria or more conservative lending terms.
 
 However, loan grade should not be the sole determinant of loan approval.
+
+### Bivariate Analysis – Interest Rate vs Loan Status
+
+The relationship between interest rate and loan repayment status was examined using box plots and descriptive statistics.
+
+The findings are:
+
+- Borrowers whose loans were Charged Off have a mean interest rate of 15.88%, compared with 13.09% for Fully Paid borrowers.
+- The median interest rate for Charged Off borrowers is 15.61%, compared with 12.99% for Fully Paid borrowers.
+- The difference in mean interest rates is 2.79 percentage points.
+
+**Inference:**
+
+Borrowers with Charged Off loans generally have higher interest rates than borrowers who fully repaid their loans. This suggests a positive association between interest rates and credit risk.
+
+Higher interest rates may reflect the lender's assessment of borrower risk and may also increase the repayment burden.
+
+However, the distributions overlap, indicating that interest rate alone cannot accurately distinguish between defaulters and non-defaulters.
+
+**Business Recommendation:**
+
+Interest rate should be considered alongside other borrower characteristics, such as income, DTI, loan amount and credit history, when assessing creditworthiness.
