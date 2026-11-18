@@ -686,3 +686,142 @@ The overall pattern suggests that borrowers with shorter credit histories have h
 
 **Conclusion:** Credit history length appears to be associated with loan repayment outcomes and may provide useful information for default prediction. This association does not establish causation.
 
+### Bivariate Analysis – Loan Issue Year and Loan Status
+
+The loan issue year was extracted from `issue_d` to investigate whether loan repayment outcomes vary across different lending periods.
+
+**Charged-off rates by issue year:**
+
+| Issue year | Charged-off rate |
+|---|---:|
+| 2007 | 16.41% |
+| 2008 | 15.81% |
+| 2009 | 12.26% |
+| 2010 | 13.21% |
+| 2011 | 15.25% |
+| 2012 | 16.48% |
+| 2013 | 15.74% |
+| 2014 | 23.11% |
+| 2015 | 24.90% |
+| 2016 | 13.13% |
+
+**Observations:**
+- The charged-off rate fluctuates across issue years.
+- The highest observed rates occur in 2014 and 2015.
+- The lowest observed rate occurs in 2009.
+- The rate drops considerably in 2016.
+
+**Preliminary inference:** Loan issue year appears to be associated with repayment outcomes. However, changes in borrower composition, lending conditions and the length of time available for loans to reach an outcome may influence these differences.
+
+**Further investigation:** Examine the number of loans issued each year and consider differences in loan maturity before drawing conclusions.
+
+**Potential modelling relevance:** Retain `issue_d` or an appropriate derived time feature for further evaluation, while considering a time-based validation strategy.
+
+### Issue Year vs Loan Default – Effect of Loan Term
+
+To investigate whether the relationship between issue year and loan default was influenced by loan duration, the analysis was repeated separately for 36-month and 60-month loans.
+
+**Key observations:**
+
+1. 60-month loans generally had higher charged-off percentages than 36-month loans across the years examined.
+2. The charged-off rate increased during 2014 and 2015 for both loan-term categories.
+3. Therefore, the higher default rates observed in 2014–2015 cannot be attributed solely to a change in the proportion of 60-month loans.
+4. Both loan-term categories showed lower charged-off rates in 2016. However, this observation requires caution because the available data does not establish whether all loans had comparable outcome-observation periods.
+
+**Conclusion:**
+
+Loan term and issue year both appear to have associations with loan repayment outcomes. The year-wise pattern persists even after separating loans by term, suggesting that other borrower, loan or economic factors may also contribute to the observed differences.
+
+These are exploratory associations and do not establish causation. Both `issue_year` and `term` will be considered for further evaluation during feature selection and model development.
+
+### Issue Year vs Loan Default – Effect of Loan Term and Sample Size
+
+To investigate whether the relationship between issue year and loan default was influenced by loan duration, the analysis was repeated separately for 36-month and 60-month loans. The number of loans in each year-term combination was also examined.
+
+**Key observations:**
+
+1. 60-month loans generally had higher charged-off percentages than 36-month loans across the years examined.
+2. The charged-off rate increased during 2014 and 2015 for both loan-term categories.
+3. The 2014 and 2015 observations are supported by substantial sample sizes, with 102,860 and 94,264 loans respectively.
+4. The higher default rates observed in 2014–2015 cannot be attributed solely to a change in the proportion of 60-month loans.
+5. The 2016 charged-off rate was lower for both loan-term categories. Although the dataset contains 28,088 loans from 2016, the reason for the lower rate cannot be established from the available information.
+
+**Conclusion:**
+
+Issue year and loan term both show associations with loan repayment outcomes. The higher charged-off rates in 2014–2015 persist even when loans are analysed separately by term, suggesting that other borrower, loan or economic factors may also contribute.
+
+The analysis is exploratory and does not establish causation. The availability of only Fully Paid and Charged Off outcomes, without an explicit observation or closure date, also limits our ability to assess whether all loans had comparable outcome-observation periods.
+
+Both `issue_year` and `term` will be considered for further evaluation during feature selection and model development.
+
+### Verification Status vs Loan Default
+
+The relationship between `verification_status` and `loan_status` was examined using the percentage distribution of loan outcomes within each verification category.
+
+**Key observations:**
+
+1. Not Verified loans had the lowest charged-off rate at 14.64%.
+2. Source Verified loans had a charged-off rate of 21.47%.
+3. Verified loans had the highest charged-off rate at 22.32%.
+4. The difference between the Not Verified and Verified categories was 7.68 percentage points.
+5. All three categories had substantial sample sizes, making the observed differences worth further investigation.
+
+**Conclusion:**
+
+Verification status shows an association with loan repayment outcomes in this dataset. However, this does not imply that verification itself influences the likelihood of default. Differences in borrower profiles, loan characteristics and other risk factors may explain some of the observed variation.
+
+`verification_status` will be retained for further evaluation during model development.
+
+### Sub-grade vs Loan Default
+
+The relationship between `sub_grade` and `loan_status` was examined by calculating the percentage of charged-off and fully paid loans within each sub-grade.
+
+**Key observations:**
+
+1. The charged-off rate generally increased as the sub-grade moved from A1 towards G5.
+2. A1 had the lowest charged-off rate at 2.87%.
+3. The rate increased consistently from A1 (2.87%) to E5 (40.31%).
+4. Higher-risk sub-grades, particularly F and G, showed substantially higher charged-off rates.
+5. G3 had the highest observed charged-off rate at 51.09%.
+6. A few minor reversals occurred in the F and G categories, but the overall upward trend remained clear.
+
+**Conclusion:**
+
+Sub-grade shows a strong association with loan repayment outcomes. Borrowers in lower-quality sub-grades had substantially higher charged-off rates in this dataset.
+
+Since `grade` and `sub_grade` represent overlapping classifications, their combined use may introduce redundancy in the model. Both will be evaluated during feature selection before deciding which representation to retain.
+
+### Initial List Status vs Loan Default
+
+The relationship between `initial_list_status` and `loan_status` was examined by calculating the percentage of charged-off and fully paid loans within each category.
+
+**Key observations:**
+
+1. Loans with initial list status `f` had a charged-off rate of 19.31%.
+2. Loans with initial list status `w` had a charged-off rate of 20.08%.
+3. The difference between the two categories was only 0.77 percentage points.
+4. Both categories had substantial sample sizes.
+
+**Conclusion:**
+
+`initial_list_status` shows only a small difference in repayment outcomes across its two categories. It may have limited predictive value on its own, although its contribution should ultimately be assessed during model development.
+
+The variable will be retained for initial model evaluation rather than excluded solely on the basis of this exploratory analysis.
+
+### Application Type vs Loan Default
+
+The relationship between `application_type` and `loan_status` was examined by calculating the percentage of charged-off and fully paid loans within each application category.
+
+**Key observations:**
+
+1. Individual applications accounted for 395,319 loans, approximately 99.82% of the dataset, with a charged-off rate of 19.61%.
+2. Joint applications accounted for only 425 loans and had a charged-off rate of 12.71%.
+3. Direct Pay applications accounted for only 286 loans and had a charged-off rate of 35.66%.
+4. Although the Joint and Direct Pay categories showed different default rates from Individual applications, their sample sizes were very small.
+
+**Conclusion:**
+
+The dataset is heavily dominated by Individual applications. The observed default rates for Joint and Direct Pay applications should be interpreted cautiously because of their limited representation.
+
+`application_type` will be retained for initial model evaluation, but the contribution of its minority categories will be assessed carefully during preprocessing and model development.
+
