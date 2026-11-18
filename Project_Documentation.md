@@ -825,3 +825,12 @@ The dataset is heavily dominated by Individual applications. The observed defaul
 
 `application_type` will be retained for initial model evaluation, but the contribution of its minority categories will be assessed carefully during preprocessing and model development.
 
+**Duplicate Record Check**
+
+- Total exact duplicate rows: 0
+- Duplicate percentage: 0%
+- No records were identified as exact duplicates across all available columns.
+- No rows need to be removed for exact duplication.
+
+**Limitation:** The dataset does not contain an explicitly identifiable loan ID column. Therefore, the absence of exact duplicates does not establish that every record represents a unique loan.
+
