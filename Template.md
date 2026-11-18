@@ -679,8 +679,36 @@ The EDA identified several potentially useful predictors of loan repayment outco
 
 **Current conclusion:**
 
+**Address Column Assessment**
+
+- Total records: 396,030
+- Missing values: 0
+- Unique addresses: 393,700
+- Approximate uniqueness: 99.41%
+
+**Observation:** The address column has extremely high cardinality, with almost every record containing a distinct address.
+
+**Decision:** Exclude `address` from the initial predictive model. Direct categorical encoding would create a very large number of features and may introduce unnecessary complexity and privacy concerns.
+
+**Status:** Proposed exclusion; to be confirmed during final feature selection.
+
 The exploratory analysis has provided a sound understanding of the dataset and identified several issues that need to be addressed before modelling.
 
 No final preprocessing decisions or model-performance claims have been made yet. All proposed treatments will be tested and documented before being finalised.
 
 **Next project stage:** Data leakage assessment, duplicate checks and systematic preprocessing planning.
+
+**Home Ownership – Category Assessment**
+
+- MORTGAGE: 198,348 records (50.08%)
+- RENT: 159,790 records (40.35%)
+- OWN: 37,746 records (9.53%)
+- OTHER: 112 records
+- NONE: 31 records
+- ANY: 3 records
+
+**Findings:** MORTGAGE, RENT and OWN account for almost all observations. OTHER, NONE and ANY have very small sample sizes, making their individual default rates unreliable for comparison.
+
+**Proposed preparation:** Retain the three major categories separately and consider grouping OTHER, NONE and ANY into a single `Other` category.
+
+**Status:** Proposed; implementation and model impact pending.
