@@ -639,6 +639,10 @@ Validation should include:
 
 # 11. Outstanding Questions and Assumptions
 
+Prediction scenario established: pre-approval underwriting.
+Post-approval or post-issuance information must not be used as predictors.
+Features such as interest rate, installment, grade, sub-grade and verification status require further timing and leakage assessment.
+
 | ID | Question / Assumption | Why It Matters | How to Resolve | Status |
 |---|---|---|---|---|
 | Q01 | Are there exact duplicate records? | Duplicates may distort analysis and modelling. | Run duplicate checks. | Pending |
@@ -712,3 +716,416 @@ No final preprocessing decisions or model-performance claims have been made yet.
 **Proposed preparation:** Retain the three major categories separately and consider grouping OTHER, NONE and ANY into a single `Other` category.
 
 **Status:** Proposed; implementation and model impact pending.
+
+# Feature Assessment – Data Leakage
+
+**Project prediction scenario:** Default risk prediction during underwriting, before loan approval and issuance.
+
+| Feature | Assessment | Proposed decision | Status |
+|---|---|---|---|
+| int_rate | Pricing information; may reflect prior risk assessment | Exclude from primary model | Pending implementation |
+| installment | Depends on proposed loan terms being calculated | Exclude from early underwriting model | Pending implementation |
+| grade | Lender-assigned risk classification | Exclude | Pending implementation |
+| sub_grade | More granular lender-assigned risk classification | Exclude | Pending implementation |
+
+## Data Preparation Decision Log
+
+**D19 – Interest Rate**
+- Decision: Exclude `int_rate` from the primary model.
+- Reason: May not be available at the chosen prediction point.
+- Alternative: Evaluate separately in a post-pricing model.
+
+**D20 – Installment**
+- Decision: Exclude `installment` from the primary early-underwriting model.
+- Reason: Depends on proposed loan terms being calculated.
+- Alternative: Consider retaining if the prediction point is after proposed terms are available.
+
+**D21 – Grade**
+- Decision: Exclude `grade`.
+- Reason: Represents an existing lender's risk assessment.
+
+**D22 – Sub-grade**
+- Decision: Exclude `sub_grade`.
+- Reason: Represents an existing lender's more granular risk assessment and overlaps with `grade`.
+
+**Implementation status:** All four decisions are proposed. No columns have been physically removed from the original dataset.
+
+**D23 – Verification Status**
+
+- Feature: `verification_status`
+- Decision: Exclude from the primary model.
+- Reason: Income verification has not begun at our chosen prediction point (immediately after application submission).
+- Alternative: Consider retaining in a separate post-verification model.
+- Status: Proposed exclusion; implementation pending.
+
+**D24 – Initial Listing Status**
+
+- Feature: `initial_list_status`
+- Decision: Exclude from the primary model.
+- Reason: Represents how a loan is offered to investors, rather than information available at initial application submission.
+- Additional observation: The difference in charged-off rates between fractional and whole loans is relatively small (0.77 percentage points).
+- Status: Proposed exclusion; implementation pending.
+
+**D25 – Issue Date and Issue Year**
+
+- Features: `issue_d`, `issue_year`
+- Decision: Exclude both from the primary model.
+- Reason: These features represent the actual loan issuance date, which is unavailable immediately after application submission.
+- Alternative use: Historical trend and loan-vintage analysis.
+- Status: Proposed exclusion; implementation pending.
+
+**D26 – Earliest Credit Line**
+
+- Feature: `earliest_cr_line`
+- Decision: Retain as a potential predictor.
+- Reason: Can be obtained from the applicant's credit bureau report during application assessment.
+- Assumption: LoanTap obtains the applicant's credit report at the chosen prediction point.
+- Related feature: Recalculate `credit_history_months` using the application date rather than `issue_d`.
+- Status: Retention proposed; reference-date correction pending.
+
+**D27 – Residential Address**
+
+- Feature: `address`
+- Availability: Potentially available at application submission.
+- Decision: Exclude from the primary model.
+- Reason: Extremely high cardinality (approximately 99.41% unique), potential model complexity and privacy considerations.
+- Alternative: Explore broader geographic features only if justified.
+- Status: Proposed exclusion; implementation pending.
+
+  **D28 – Employment Title**
+
+- Feature: `emp_title`
+- Availability: Potentially available at application submission.
+- Unique values: 173,105.
+- Decision: Exclude from the initial model.
+- Reason: Extremely high cardinality, inconsistent text descriptions and substantial encoding complexity.
+- Additional consideration: Annual income is available as a direct numerical feature. However, this is not proof of multicollinearity.
+- Status: Proposed exclusion; implementation pending.
+
+  **D29 – Loan Title**
+
+- Feature: `title`
+- Availability: Potentially available at application submission.
+- Unique values: 48,816.
+- Decision: Exclude from the primary model.
+- Reason: High cardinality, applicant-provided free text, possible inconsistency and overlap with the structured `purpose` feature.
+- Retained alternative: `purpose` (14 categories).
+- Status: Proposed exclusion; implementation pending.
+
+  ### D30. `emp_length` – Employment Length
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes, potentially collected during application |
+| Retain or exclude? | Retain |
+| Missing values | 18,301 (4.62%) |
+| Missing-value treatment | Separate `Unknown` category |
+| Remove records? | No |
+| Impute with mode? | No |
+| Reasoning | Structured feature with manageable categories; missingness may carry predictive information |
+| Preprocessing note | Handle missing values during preprocessing; preserve the original dataset |
+
+**EDA observation:** Charged Off rate is approximately 27.53% for records with missing employment length, compared with 19.23% for records with reported employment length. This is an association, not evidence of causation.
+
+### D31. `home_ownership` – Home Ownership Status
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – applicant-provided information |
+| Retain or exclude? | Retain |
+| Major categories | MORTGAGE, RENT, OWN |
+| Rare categories | OTHER, NONE, ANY |
+| Missing values | None reported |
+| Proposed preprocessing | Group rare categories into `Other` |
+| Encoding | Categorical encoding |
+| Reasoning | Relevant applicant information available at application submission |
+
+**EDA observation:** Charged Off rates are 16.96% for MORTGAGE, 22.66% for RENT, and 20.68% for OWN. Interpret these as associations, not causal relationships.
+
+### D32. `annual_inc` / `log_annual_inc` – Annual Income
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – applicant-provided |
+| Raw feature | `annual_inc` |
+| Derived feature | `log_annual_inc` |
+| Distribution | Highly right-skewed |
+| Feature engineering | Log transformation |
+| Retain for modelling | `log_annual_inc` |
+| Exclude from initial model | Raw `annual_inc` |
+| Reasoning | Reduce skewness and avoid duplicate representations |
+| Data retention | Preserve original `annual_inc` in raw dataset |
+
+**Preprocessing note:** Use `np.log1p()` to accommodate zero income values. Investigate negative or invalid values before transformation.
+
+### D33. `loan_amnt` – Loan Amount
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – applicant-requested amount |
+| Retain or exclude? | Retain |
+| Reasoning | Relevant to the applicant's borrowing requirement and potential repayment risk |
+| Preprocessing consideration | Examine distribution and outliers; consider scaling depending on model |
+
+
+### D34. `term` – Loan Repayment Term
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – applicant-selected |
+| Retain or exclude? | Retain |
+| Categories | 36 months, 60 months |
+| Most common category | 36 months (76.25%) |
+| Reasoning | Influences repayment duration and monthly repayment obligation |
+| Preprocessing | Categorical encoding |
+
+**Important:** Although `term` influences `installment`, it is not leakage because the applicant-selected term is available at application submission.
+
+### D35. `purpose` – Loan Purpose
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – applicant-provided |
+| Retain or exclude? | Retain |
+| Categories | 14 structured categories |
+| Most common category | debt_consolidation (234,507 records) |
+| Notable EDA observation | small_business Charged Off rate: 29.45% |
+| Reasoning | Provides information about the applicant's borrowing requirement |
+| Preprocessing | Categorical encoding; review rare categories |
+
+**Important:** Interpret differences in default rates as associations, not causal relationships. Be cautious with categories having small sample sizes.
+
+### D36. `dti` – Debt-to-Income Ratio
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes, subject to application-stage calculation |
+| Retain or exclude? | Retain |
+| Mean – Charged Off | 19.66 |
+| Mean – Fully Paid | 16.82 |
+| Maximum | 9,999 (extreme value) |
+| Reasoning | Important indicator of existing debt burden relative to income |
+| Preprocessing | Investigate extreme values; determine treatment before modelling |
+| Scaling | Consider depending on algorithm |
+
+**Important:** Verify that DTI reflects information available at application submission. Do not automatically remove extreme values without investigation.
+
+### D37. `open_acc` – Number of Open Credit Accounts
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – assuming application-stage credit bureau access |
+| Retain or exclude? | Retain |
+| Feature type | Numerical |
+| Correlation observation | Correlation with `total_acc`: approximately 0.68 |
+| Reasoning | Indicates existing credit exposure and borrowing activity |
+| Preprocessing | Examine distribution and unusual values; consider scaling |
+| Further analysis | Assess relationship with `total_acc` |
+
+**Important:** Correlation with another feature does not automatically justify exclusion.
+
+### D38. `total_acc` – Total Number of Credit Accounts
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – assuming application-stage credit bureau access |
+| Retain or exclude? | Retain |
+| Feature type | Numerical |
+| Correlation with `open_acc` | Approximately 0.68 |
+| Correlation with `mort_acc` | Approximately 0.38 |
+| Reasoning | Provides a broader view of the applicant's credit history |
+| Preprocessing | Examine distribution and unusual values; consider scaling |
+| Further analysis | Evaluate relationship with `open_acc` |
+
+**Important:** Retain both `open_acc` and `total_acc` initially. Evaluate their individual contribution during modelling.
+
+### D39. `pub_rec` – Derogatory Public Records
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – assuming application-stage credit bureau access |
+| Retain or exclude? | Retain |
+| Feature type | Numerical count |
+| Most common value | 0 |
+| Correlation with `pub_rec_bankruptcies` | Approximately 0.70 |
+| Reasoning | Indicates adverse public credit history |
+| Preprocessing | Examine distribution and non-zero values; consider scaling |
+| Further analysis | Evaluate relationship with `pub_rec_bankruptcies` |
+
+**Important:** Assess correlated credit-history features during modelling rather than automatically removing one.
+
+### D40. `pub_rec_bankruptcies` – Public Record Bankruptcies
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – assuming application-stage credit bureau access |
+| Retain or exclude? | Retain |
+| Feature type | Numerical count |
+| Missing values | 535 (0.14%) |
+| Proposed imputation | 0 |
+| Reasoning | Avoid assigning an arbitrary positive bankruptcy count |
+| Correlation with `pub_rec` | Approximately 0.70 |
+| Multicollinearity treatment | Retain both initially; evaluate using VIF and model behaviour |
+
+**Assumption and limitation:** Missing values are treated as zero for the initial modelling exercise. This assumes missing means no reported bankruptcies, which must be validated against the source data definition where possible.
+
+**Preprocessing note:** Fit the imputation strategy using training data only.
+
+### D41. `mort_acc` – Number of Mortgage Accounts
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – assuming application-stage credit bureau access |
+| Retain or exclude? | Retain |
+| Feature type | Numerical count |
+| Missing values | 37,795 (9.54%) |
+| Correlation with `total_acc` | Approximately 0.38 |
+| Reasoning | Provides additional information about mortgage and credit history |
+| Missing-value treatment | To be determined during preprocessing |
+| Preprocessing | Examine distribution, missingness and relationship with `total_acc` |
+
+**Important:** Do not automatically assume missing mortgage account information means zero mortgage accounts.
+
+### D42. `revol_bal` – Revolving Credit Balance
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – assuming application-stage credit bureau access |
+| Retain or exclude? | Retain |
+| Feature type | Numerical |
+| EDA observation | Extreme values present |
+| Reasoning | Indicates existing revolving debt and financial obligations |
+| Preprocessing | Investigate outliers; consider log transformation and scaling |
+
+**Important:** Do not automatically remove extreme values. Preserve the raw feature and perform transformations during preprocessing.
+
+### D43. `revol_util` – Revolving Credit Utilisation
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes – assuming application-stage credit bureau access |
+| Retain or exclude? | Retain |
+| Feature type | Numerical percentage |
+| Maximum observed value | 892.3 (suspicious) |
+| Missing values | 276 (0.07%) |
+| Reasoning | Indicates utilisation of available revolving credit |
+| Preprocessing | Investigate values above 100%; handle missing values; consider scaling |
+
+**Important:** Do not automatically cap or remove extreme values without investigation. Preserve the original feature and document any treatment.
+
+### D44. `application_type` – Application Type
+
+| Assessment | Decision / Observation |
+|---|---|
+| Available at prediction time? | Yes |
+| Retain or exclude? | Retain |
+| Categories | Individual, Joint |
+| Feature type | Categorical |
+| Reasoning | Provides context about the structure of the loan application |
+| Preprocessing | Categorical encoding |
+
+
+# D45. Derived Credit History Features – Prediction-Time Availability Assessment
+
+### Features assessed
+
+- `credit_history_months`
+- `credit_history_years`
+- `credit_history_group`
+- `earliest_cr_line`
+
+| Assessment | Decision / Observation |
+|---|---|
+| Original date feature | `earliest_cr_line` |
+| Reference date used for derivation | `issue_d` |
+| Derived features | `credit_history_months`, `credit_history_years`, `credit_history_group` |
+| Prediction point | Immediately after application submission |
+| Are derived features available at prediction time? | No – derived using actual issuance date |
+| Retain derived features? | No – exclude from primary model |
+| Retain `earliest_cr_line`? | Yes, in raw dataset |
+| Missing application date? | Yes – not available in the dataset |
+| Alternative derivation | Application date minus earliest credit line date |
+| Current limitation | Cannot accurately calculate credit-history duration at application submission |
+
+### Decision and reasoning
+
+The three derived features are excluded because they use `issue_d`, which represents the actual loan issuance date and is unavailable at the intended prediction point.
+
+`earliest_cr_line` is retained because it could be available through the applicant's credit bureau report during application assessment.
+
+However, without the actual application date, we cannot calculate a valid credit-history duration for the intended prediction scenario.
+
+### Future consideration
+
+If application dates become available, derive credit-history duration using:
+
+`application_date - earliest_cr_line`
+
+**Documentation note:** Preserve the original date and derived columns in the raw dataset. Exclude the three derived features only from the primary model's predictor list.
+
+# D46. Final Feature Decision Register
+
+## A. Prediction scenario
+
+| Item | Decision |
+|---|---|
+| Prediction point | Immediately after application submission |
+| Before underwriting? | Yes |
+| Before verification? | Yes |
+| Before approval and issuance? | Yes |
+| Applicant-provided information | Assumed available |
+| Credit bureau information | Assumed available during application assessment |
+| Application date | Not available in dataset |
+
+## B. Final feature classification
+
+| Classification | Features |
+|---|---|
+| Retain as predictors | `loan_amnt`, `term`, `emp_length`, `home_ownership`, `log_annual_inc`, `purpose`, `dti`, `open_acc`, `total_acc`, `pub_rec`, `pub_rec_bankruptcies`, `mort_acc`, `revol_bal`, `revol_util`, `application_type` |
+| Exclude from primary model | `int_rate`, `installment`, `grade`, `sub_grade`, `verification_status`, `initial_list_status`, `emp_title`, `title`, `address`, `annual_inc`, `issue_year`, `credit_history_months`, `credit_history_years`, `credit_history_group` |
+| Target variable | `loan_status` |
+| EDA/reference only | `issue_d`, `issue_year`, `earliest_cr_line`, raw `annual_inc` and excluded text/address columns |
+
+## C. Important preprocessing decisions
+
+| Feature | Planned treatment |
+|---|---|
+| `emp_length` | Missing → `Unknown` |
+| `home_ownership` | Group rare categories into `Other` |
+| `annual_inc` | Use `log_annual_inc`; exclude raw version from predictors |
+| `dti` | Investigate extreme values |
+| `pub_rec_bankruptcies` | Proposed missing-value imputation with 0; validate assumption |
+| `mort_acc` | Investigate missingness; treatment pending |
+| `revol_bal` | Investigate extreme values; consider log transformation |
+| `revol_util` | Investigate values above 100%; handle missing values |
+| `pub_rec` and `pub_rec_bankruptcies` | Evaluate multicollinearity |
+| `open_acc` and `total_acc` | Evaluate correlation and individual contribution |
+
+## D. Target encoding
+
+| Target value | Encoded value |
+|---|---:|
+| Fully Paid | 0 |
+| Charged Off | 1 |
+
+## E. Data preparation principles
+
+- Preserve original raw data.
+- Create a separate modelling dataset.
+- Separate target and predictors.
+- Fit imputation, encoding and scaling transformations on training data only.
+- Investigate outliers before treatment.
+- Evaluate multicollinearity where relevant.
+- Keep the test set untouched until final evaluation.
+
+## F. Outstanding limitations
+
+1. Application date is unavailable.
+2. Credit bureau availability at application assessment is an assumption.
+3. Zero imputation for missing `pub_rec_bankruptcies` requires validation.
+4. Missing-value treatment for `mort_acc` remains pending.
+5. Extreme values in `dti`, `revol_bal` and `revol_util` require further investigation.
+
+**Status:** Feature availability and leakage assessment completed. Ready to begin preprocessing.
+
+
