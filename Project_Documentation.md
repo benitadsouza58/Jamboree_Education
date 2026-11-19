@@ -14,6 +14,8 @@ The model should help LoanTap:
 - Avoid rejecting creditworthy applicants.
 - Support informed lending and risk-management decisions.
 
+The model is intended to predict the likelihood of loan default at the underwriting stage, before loan approval and issuance. Only information available at or before this decision point should be considered as model input.
+
 ## 2. Initial Dataset Exploration
 
 The dataset contains 396,030 records and 27 attributes.
@@ -833,4 +835,721 @@ The dataset is heavily dominated by Individual applications. The observed defaul
 - No rows need to be removed for exact duplication.
 
 **Limitation:** The dataset does not contain an explicitly identifiable loan ID column. Therefore, the absence of exact duplicates does not establish that every record represents a unique loan.
+
+# Data Leakage Assessment
+
+## 1. Prediction Scenario
+
+The objective is to predict the probability of loan default during the underwriting process, before the loan is approved and issued.
+
+The model should use information available at the intended prediction point. Information generated later in the lending process or outcomes of previous risk assessments should not be used indiscriminately.
+
+## 2. Feature-wise Assessment
+
+### 2.1 Interest Rate (`int_rate`)
+
+**Business meaning:** Annual interest rate charged on the loan.
+
+**Assessment:**
+- Interest rates are generally determined as part of the lender's pricing and underwriting process.
+- The rate may reflect the lender's earlier assessment of borrower risk.
+- It may not be available at our chosen early underwriting prediction point.
+
+**Decision:** Exclude from the primary pre-approval model.
+
+**Further consideration:** A separate comparison model could include this feature if the prediction is made after proposed pricing has been determined.
+
+### 2.2 Monthly Installment (`installment`)
+
+**Business meaning:** Expected monthly loan repayment amount.
+
+**Assessment:**
+- The installment is calculated using the loan amount, interest rate and repayment term.
+- It may be available after proposed loan terms have been calculated.
+- Its availability depends on the exact prediction point.
+
+**Decision:** Exclude from the primary model if predicting before proposed loan terms are calculated.
+
+**Further consideration:** It may be retained in a separate model if the prediction occurs after the proposed installment is known but before final approval.
+
+### 2.3 Loan Grade (`grade`)
+
+**Business meaning:** Lender-assigned risk classification, ranging from A to G.
+
+**Assessment:**
+- The grade represents an existing lender's assessment of borrower risk.
+- It has a strong association with loan outcomes in our EDA.
+- Using it in an independent pre-approval risk model could make the model dependent on an existing risk assessment.
+
+**Decision:** Exclude from the primary model.
+
+### 2.4 Sub-grade (`sub_grade`)
+
+**Business meaning:** More granular risk classification within each loan grade, ranging from A1 to G5.
+
+**Assessment:**
+- It is an extension of the lender-assigned grade.
+- It has a strong association with loan outcomes.
+- It overlaps with the information represented by `grade`.
+
+**Decision:** Exclude from the primary model for the same reasons as `grade`.
+
+## 3. Summary of Decisions
+
+| Feature | Proposed treatment | Reason |
+|---|---|---|
+| int_rate | Exclude | Pricing information may not be available at the chosen prediction point |
+| installment | Exclude initially | Depends on proposed loan terms being calculated |
+| grade | Exclude | Existing lender risk assessment |
+| sub_grade | Exclude | Existing lender risk assessment; overlaps with grade |
+
+**Important:** These are feature-selection decisions for the primary model, not decisions to delete columns from the original dataset. The original data will be preserved.
+
+## 4. Outstanding Considerations
+
+- Confirm the precise timing of interest-rate and installment assignment in the source lending process.
+- Maintain a clear distinction between an independent pre-approval model and a post-pricing risk model.
+- Evaluate alternative feature sets only when their information would genuinely be available at the relevant prediction point.
+
+### 2.5 Verification Status (`verification_status`)
+
+**Business meaning:** Indicates whether the applicant's income information has been verified by the lender.
+
+**Assessment:**
+- Income verification is part of the underwriting process.
+- The verification status is generated or updated after the application is submitted.
+- Our chosen prediction point is immediately after application submission, before income verification begins.
+- Therefore, this information is unavailable at the intended prediction point.
+
+**Decision:** Exclude `verification_status` from the primary model.
+
+**Further consideration:** It may be suitable for a separate model that makes predictions after income verification has been completed.
+
+### 2.6 Initial Listing Status (`initial_list_status`)
+
+**Business meaning:** Indicates how a loan is initially offered to investors.
+
+- `f`: Fractional loan – offered to investors in fractional portions.
+- `w`: Whole loan – offered to investors as a whole loan.
+
+**Assessment:**
+- This feature describes the investor-side listing classification.
+- It is not a direct borrower or applicant characteristic.
+- It relates to the loan listing process, which occurs after the initial underwriting assessment.
+- It is not available at our chosen prediction point immediately after application submission.
+
+**EDA observation:** The Charged Off rates were 19.31% for fractional loans and 20.08% for whole loans, a relatively small difference of 0.77 percentage points.
+
+**Decision:** Exclude from the primary pre-approval model because it is unavailable at the intended prediction point and does not represent an applicant characteristic.
+
+**Further consideration:** Retain in the original dataset for historical analysis.
+
+### 2.7 Issue Date (`issue_d`) and Issue Year (`issue_year`)
+
+**Business meaning:** `issue_d` represents the date on which the loan was issued. `issue_year` is derived from this date.
+
+**Assessment:**
+- The issuance date is generated only after the loan has been approved and issued.
+- Our prediction point is immediately after application submission, before approval.
+- Therefore, neither the actual issuance date nor its derived year is available at the intended prediction point.
+
+**Decision:** Exclude both `issue_d` and `issue_year` from the primary model.
+
+**Further consideration:** Retain them in the original dataset for historical analysis, including loan-vintage and default-rate trends.
+
+### 2.8 Earliest Credit Line (`earliest_cr_line`)
+
+**Business meaning:** Represents the date on which the borrower's oldest recorded credit account was opened.
+
+**Assessment:**
+- This information can be obtained from the applicant's credit bureau report.
+- It does not require the applicant to be an existing LoanTap customer.
+- Under our project assumption, LoanTap obtains the credit report during application assessment.
+- Therefore, the feature is potentially available at the intended prediction point.
+
+**Decision:** Retain `earliest_cr_line` as a potential predictor.
+
+**Feature engineering consideration:**
+- The previously derived `credit_history_months` uses `issue_d` as its reference date.
+- Since the actual issuance date is unavailable at application submission, this calculation is not suitable for our primary model.
+- Recalculate credit history duration using the application date when available.
+
+**Status:** Retain the original credit-history date; recalculate duration using an appropriate application-date reference.
+
+### 2.9 Residential Address (`address`)
+
+**Business meaning:** Applicant's residential address.
+
+**Assessment:**
+- Residential address is generally collected during the loan application process.
+- It is potentially available at our prediction point.
+- However, the column has extremely high cardinality, with 393,700 unique values across 396,030 records (approximately 99.41%).
+- Direct categorical encoding would create a very large feature space.
+- Address information is also sensitive personal information.
+
+**Decision:** Exclude `address` from the primary model.
+
+**Further consideration:** Geographic aggregation could be explored separately if a valid business justification and appropriate privacy safeguards exist.
+
+### 2.10 Employment Title (`emp_title`)
+
+**Business meaning:** Applicant's reported job title or occupation.
+
+**Assessment:**
+- Potentially available at application submission.
+- Contains 173,105 unique values, indicating extremely high cardinality.
+- Job-title descriptions may be inconsistent and difficult to standardise.
+- Direct categorical encoding would create a very large feature space.
+- Annual income is already available as a direct numerical indicator of income.
+
+**Decision:** Exclude `emp_title` from the initial model.
+
+**Important consideration:** High cardinality and modelling complexity are the primary reasons for exclusion. A relationship between job title and annual income does not, by itself, establish multicollinearity.
+
+**Further consideration:** Occupational categories could be explored separately through text standardisation and grouping if required.
+
+### 2.11 Loan Title (`title`)
+
+**Business meaning:** Applicant-provided description or title associated with the loan application.
+
+**Assessment:**
+- Potentially available at application submission.
+- Contains 48,816 unique values, indicating high cardinality.
+- It is free-text information supplied by the applicant and may be vague, inconsistent or not fully representative of the actual purpose.
+- The structured `purpose` column already captures the broad reason for borrowing using 14 standardised categories.
+
+**Decision:** Exclude `title` from the primary prediction model and retain `purpose`.
+
+**Further consideration:** The title field may still be useful for exploratory or text-based analysis of how applicants describe their borrowing requirements.
+
+### Feature: `emp_length` – Employment Length
+
+**Availability at prediction time:** Available
+
+Employment length is potentially collected from the applicant during loan application and can therefore be considered available at our chosen prediction point: immediately after application submission.
+
+**EDA observations:**
+- The feature contains 11 categories, including `10+ years` and `<1 year`.
+- The largest category is `10+ years`, with 126,041 records.
+- Missing values: 18,301 (4.62%).
+- The Charged Off rate for records with missing employment length is approximately 27.53%, compared with 19.23% for records with reported employment length.
+
+**Decision: Retain**
+
+We will retain `emp_length` as a predictor because it is potentially available at application submission and has a manageable number of structured categories.
+
+**Missing-value treatment:**
+- Retain all records.
+- Convert missing values into a separate `Unknown` category.
+- Do not impute missing values with the most frequent category (`10+ years`), as this would make an unsupported assumption about the applicant's employment history.
+
+**Reasoning:** Treating missing values as a separate category preserves information and allows the model to learn whether missing employment information is associated with default risk. The observed association should not be interpreted as causation.
+
+**Preprocessing note:** Implement the missing-value treatment during preprocessing, without modifying the original raw dataset.
+
+### Feature: `home_ownership` – Home Ownership Status
+
+**Availability at prediction time:** Available
+
+Home ownership status is an applicant-provided feature collected during the loan application process. It is therefore potentially available at our chosen prediction point: immediately after application submission.
+
+**EDA observations:**
+
+| Category | Records | Charged Off Rate |
+|---|---:|---:|
+| MORTGAGE | 198,348 | 16.96% |
+| RENT | 159,790 | 22.66% |
+| OWN | 37,746 | 20.68% |
+| OTHER | 112 | 14.29% |
+| NONE | 31 | 22.58% |
+| ANY | 3 | 0.00% |
+
+**Decision: Retain**
+
+The feature is relevant to an applicant's housing situation and is potentially available at application submission.
+
+**Preprocessing consideration:**
+
+- Retain `MORTGAGE`, `RENT`, and `OWN` as separate categories.
+- Consider grouping the very low-frequency categories `OTHER`, `NONE`, and `ANY` into a single `Other` category.
+- Apply categorical encoding during preprocessing.
+
+**Reasoning:** The three major categories account for nearly all records. Grouping the rare categories can reduce unnecessary complexity and help avoid unstable estimates from very small groups.
+
+The observed differences in default rates indicate an association with loan repayment outcomes, but do not establish causation.
+
+### Feature: `annual_inc` and `log_annual_inc` – Annual Income
+
+**Availability at prediction time:** Available
+
+Annual income is applicant-provided information collected during the loan application process. It is potentially available at our chosen prediction point.
+
+**EDA observations:**
+- `annual_inc` is highly right-skewed.
+- Charged Off applicants have a lower mean and median annual income than Fully Paid applicants.
+- Mean annual income:
+  - Charged Off: 67,535.54
+  - Fully Paid: 75,829.95
+- Median annual income:
+  - Charged Off: 59,000
+  - Fully Paid: 65,000
+
+**Feature engineering:** Created `log_annual_inc` to reduce the impact of the highly skewed income distribution.
+
+**Decision:**
+- Retain `log_annual_inc` as the model input.
+- Exclude raw `annual_inc` from the initial model to avoid retaining two representations of the same underlying information.
+- Preserve `annual_inc` in the original dataset for reference, EDA and interpretation.
+
+**Reasoning:** The logarithmic transformation compresses extreme values and can make the income distribution more suitable for modelling. We will evaluate the transformation during model development.
+
+**Preprocessing note:** Ensure that the transformation is valid for all income values. Since income can be zero, `np.log1p(annual_inc)` is appropriate. Any invalid or negative values must be investigated before transformation.
+
+### Feature: `loan_amnt` – Loan Amount
+
+**Availability at prediction time:** Available
+
+`loan_amnt` represents the amount requested by the applicant. It is known at the time of application submission and is therefore available at our chosen prediction point.
+
+**EDA observations:**
+- The feature represents the applicant's requested borrowing amount.
+- It is relevant to assessing the size of the financial obligation.
+- Its relationship with repayment outcomes can be further evaluated during modelling.
+
+**Decision: Retain**
+
+**Reasoning:** The requested loan amount is an important financial characteristic and may help the model estimate default risk.
+
+**Preprocessing consideration:** Examine its distribution and outliers during preprocessing. Scaling may be considered depending on the selected algorithm.
+
+### Feature: `term` – Loan Repayment Term
+
+**Availability at prediction time:** Available
+
+`term` represents the repayment duration selected by the applicant, such as 36 months or 60 months.
+
+**EDA observations:**
+- The dataset contains two repayment-term categories: 36 months and 60 months.
+- Approximately 76.25% of loans have a 36-month term.
+- Repayment term influences the monthly installment, along with loan amount and interest rate.
+
+**Decision: Retain**
+
+**Reasoning:** Since the repayment term is selected by the applicant and is known at application submission, it is available at our chosen prediction point. It is also relevant to repayment capacity and loan default risk.
+
+**Preprocessing consideration:** Treat `term` as a categorical feature and encode it during preprocessing.
+
+**Important distinction:** Although `term` influences `installment`, this does not make it a leakage feature. Its availability at the prediction point determines whether it can be used.
+
+### Feature: `purpose` – Loan Purpose
+
+**Availability at prediction time:** Available
+
+`purpose` represents the reason for which the applicant is requesting the loan. It is applicant-provided information and is potentially available at application submission.
+
+**EDA observations:**
+- The feature contains 14 structured categories.
+- `debt_consolidation` is the most common category, with 234,507 records.
+- `small_business` has a relatively high Charged Off rate of 29.45%.
+
+**Decision: Retain**
+
+**Reasoning:** Loan purpose provides information about the applicant's borrowing requirement and may help identify differences in repayment risk across categories.
+
+**Preprocessing consideration:**
+- Treat `purpose` as a categorical feature.
+- Encode the categories during preprocessing.
+- Review category frequencies before encoding and consider grouping genuinely rare categories if necessary.
+
+**Important:** Differences in default rates across purposes indicate associations, not causation. Rates from categories with small sample sizes should be interpreted cautiously.
+
+### Feature: `dti` – Debt-to-Income Ratio
+
+**Availability at prediction time:** Available, assuming it is calculated using applicant-provided financial information and/or information obtained during the application-stage credit assessment.
+
+**EDA observations:**
+- Mean DTI for Charged Off applicants: 19.66
+- Mean DTI for Fully Paid applicants: 16.82
+- Maximum observed DTI: 9,999, an extreme value requiring investigation.
+- Only a small proportion of records have DTI above 40.
+
+**Decision: Retain**
+
+**Reasoning:** DTI measures the applicant's existing debt burden relative to income and is relevant to assessing repayment capacity.
+
+**Preprocessing considerations:**
+- Investigate extreme values, particularly the maximum value of 9,999.
+- Check whether extreme values are data-entry issues, special values or genuine observations.
+- Do not automatically delete extreme observations without investigation.
+- Decide on appropriate treatment during preprocessing.
+- Consider scaling depending on the selected algorithm.
+
+**Important:** Confirm that the DTI value represents information available at application submission and was not calculated using post-application or post-approval information.
+
+### Feature: `open_acc` – Number of Open Credit Accounts
+
+**Availability at prediction time:** Available, assuming LoanTap obtains the applicant's credit bureau report during application assessment.
+
+**EDA observations:**
+- Represents the number of currently open credit accounts.
+- Shows a positive correlation with `total_acc` (approximately 0.68).
+
+**Decision: Retain**
+
+**Reasoning:** The number of open accounts provides information about the applicant's existing credit exposure and borrowing activity. It may help the model assess repayment risk.
+
+**Preprocessing considerations:**
+- Examine the distribution and identify unusually high values.
+- Treat as a numerical feature.
+- Consider scaling depending on the selected algorithm.
+
+**Additional consideration:** Since `open_acc` is correlated with `total_acc`, we will examine their relationship during feature analysis. Correlation alone is not sufficient reason to exclude either feature.
+
+### Feature: `total_acc` – Total Number of Credit Accounts
+
+**Availability at prediction time:** Available, assuming LoanTap obtains the applicant's credit bureau report during application assessment.
+
+**EDA observations:**
+- Represents the total number of credit accounts in the applicant's credit history, including open and closed accounts.
+- Correlation with `open_acc`: approximately 0.68.
+- Correlation with `mort_acc`: approximately 0.38.
+
+**Decision: Retain**
+
+**Reasoning:** `total_acc` provides a broader view of the applicant's credit history and borrowing activity. It complements `open_acc`, which represents only currently open accounts.
+
+**Preprocessing considerations:**
+- Treat as a numerical feature.
+- Examine its distribution and unusually high values.
+- Consider scaling depending on the selected algorithm.
+- Evaluate its relationship with `open_acc` during feature analysis.
+
+**Important:** The correlation with `open_acc` does not automatically make the two features redundant. Their individual contribution should be evaluated during modelling.
+
+### Feature: `pub_rec` – Derogatory Public Records
+
+**Availability at prediction time:** Available, assuming LoanTap obtains the applicant's credit bureau report during application assessment.
+
+**EDA observations:**
+- Represents the number of derogatory public records in the applicant's credit history.
+- The most common value is 0, indicating that most applicants have no reported derogatory public records.
+- It has a correlation of approximately 0.70 with `pub_rec_bankruptcies`.
+
+**Decision: Retain**
+
+**Reasoning:** This feature provides information about adverse credit history and may help identify applicants with a history of credit-related difficulties.
+
+**Preprocessing considerations:**
+- Treat as a numerical count feature.
+- Examine its distribution and frequency of non-zero values.
+- Consider scaling depending on the selected algorithm.
+- Evaluate its relationship with `pub_rec_bankruptcies` during feature analysis.
+
+**Important:** Correlation with `pub_rec
+
+### Feature: `pub_rec_bankruptcies` – Public Record Bankruptcies
+
+**Availability at prediction time:** Available, assuming LoanTap obtains the applicant's credit bureau report during application assessment.
+
+**EDA observations:**
+- Represents the number of public record bankruptcies reported for an applicant.
+- Has approximately 0.70 correlation with `pub_rec`.
+- Contains 535 missing values (0.14%).
+
+**Decision: Retain**
+
+**Reasoning:** Bankruptcy history is a relevant indicator of an applicant's credit history and may contribute to default risk assessment.
+
+**Missing-value treatment:**
+- Proposed imputation: Replace missing values with 0.
+- Reasoning: Avoid assigning an arbitrary positive bankruptcy count that could incorrectly indicate bankruptcy history.
+- Assumption: Missing values are treated as no reported bankruptcies for this initial modelling exercise.
+- Limitation: Missing does not necessarily mean zero. Validate this assumption against the source data definitions where possible.
+
+**Multicollinearity consideration:**
+
+`pub_rec_bankruptcies` has approximately 0.70 correlation with `pub_rec`. Retain both initially and evaluate their relationship using VIF and model behaviour, particularly for Logistic Regression.
+
+**Preprocessing note:** Apply imputation during preprocessing using training data only.
+
+### Feature: `mort_acc` – Number of Mortgage Accounts
+
+**Availability at prediction time:** Available, assuming LoanTap obtains the applicant's credit bureau report during application assessment.
+
+**EDA observations:**
+- Represents the number of mortgage accounts reported in the applicant's credit history.
+- Missing values: 37,795 (9.54%).
+- Correlation with `total_acc`: approximately 0.38.
+
+**Decision: Retain**
+
+**Reasoning:** Mortgage account history may provide additional information about an applicant's credit profile and existing financial commitments.
+
+**Missing-value treatment:** To be investigated during preprocessing. We should examine the relationship
+
+### Feature: `revol_bal` – Revolving Credit Balance
+
+**Availability at prediction time:** Available, assuming LoanTap obtains the applicant's credit bureau report during application assessment.
+
+**EDA observations:**
+- Represents the total outstanding balance on revolving credit accounts.
+- The feature contains extreme values that require further investigation.
+- It provides information about the applicant's existing revolving debt.
+
+**Decision: Retain**
+
+**Reasoning:** Existing revolving debt is relevant to assessing an applicant's overall financial obligations and potential repayment capacity.
+
+**Preprocessing considerations:**
+- Examine the distribution and investigate extreme values.
+- Consider a logarithmic transformation if the feature is highly right-skewed and values are non-negative.
+- Consider scaling depending on the selected algorithm.
+- Do not automatically remove extreme values without investigation.
+
+**Important:** Preserve the original feature in the raw dataset and perform any transformations during preprocessing.
+
+### Feature: `revol_util` – Revolving Credit Utilisation
+
+**Availability at prediction time:** Available, assuming LoanTap obtains the applicant's credit bureau report during application assessment.
+
+**EDA observations:**
+- Represents revolving credit utilisation, generally expressed as a percentage.
+- Maximum observed value: 892.3, which is suspicious and requires investigation.
+- Missing values: 276 (0.07%).
+
+**Decision: Retain**
+
+**Reasoning:** Credit utilisation provides information about how much of the applicant's available revolving credit is currently being used. It may help assess existing financial pressure and credit risk.
+
+**Preprocessing considerations:**
+- Investigate the unusually high values, particularly observations above 100%.
+- Do not automatically cap or remove these values without understanding their origin.
+- Handle the small number of missing values during preprocessing.
+- Consider scaling depending on the selected algorithm.
+
+**Important:** Preserve the original values for reference. Any correction, capping or imputation must be documented and applied during preprocessing.
+
+### Feature: `application_type` – Application Type
+
+**Availability at prediction time:** Available
+
+`application_type` indicates whether the loan application was submitted by an individual or jointly by multiple applicants.
+
+**EDA observations:**
+- Categories: `Individual` and `Joint`.
+- The feature provides information about the application structure.
+
+**Decision: Retain**
+
+**Reasoning:** Individual and joint applications may differ in their financial profiles and repayment capacity. This feature may help the model identify differences in default risk.
+
+**Preprocessing considerations:**
+- Treat as a categorical feature.
+- Encode the categories during preprocessing.
+- Evaluate its relationship with loan default during modelling.
+
+# Feature Availability and Data Leakage Assessment – Derived Credit History Features
+
+## 1. Background
+
+During Exploratory Data Analysis (EDA), we created three derived features to represent the applicant's credit history:
+
+- `credit_history_months`
+- `credit_history_years`
+- `credit_history_group`
+
+These features were derived using `earliest_cr_line` and `issue_d`.
+
+However, our agreed model prediction point is:
+
+**Immediately after loan application submission, before underwriting, verification, loan approval and issuance.**
+
+Therefore, every feature must be evaluated based on whether it would have been available at that point in time.
+
+## 2. Feature Assessment
+
+| Feature | Description | Assessment |
+|---|---|---|
+| `credit_history_months` | Duration of credit history in months | Exclude |
+| `credit_history_years` | Duration of credit history in years | Exclude |
+| `credit_history_group` | Categorised credit history duration | Exclude |
+| `earliest_cr_line` | Date of the applicant's oldest recorded credit account | Retain in raw dataset |
+
+## 3. Reason for Exclusion
+
+The three derived features were calculated using `issue_d`, which represents the actual loan issuance date.
+
+The issue date is known only after the loan has passed through the approval and issuance process. It is therefore unavailable at our chosen prediction point.
+
+Using the issuance date to calculate credit-history duration would introduce information from a later stage into a model intended to make predictions at application submission.
+
+This creates a prediction-time data leakage concern.
+
+## 4. Treatment of `earliest_cr_line`
+
+We will retain `earliest_cr_line` in the original dataset.
+
+Under our assumption that LoanTap obtains the applicant's credit bureau report during application assessment, this date would be available at the prediction point.
+
+However, the dataset does not contain the actual loan application date.
+
+Consequently, we cannot accurately calculate the applicant's credit-history duration as of application submission using the available dates.
+
+If the actual application date becomes available, we can derive a new feature:
+
+`credit_history_duration = application_date - earliest_cr_line`
+
+This would represent the applicant's credit history as it existed at the time of application.
+
+## 5. Final Decision
+
+- Exclude `credit_history_months` from the primary model.
+- Exclude `credit_history_years` from the primary model.
+- Exclude `credit_history_group` from the primary model.
+- Retain `earliest_cr_line` in the raw dataset for reference.
+- Do not derive a replacement credit-history duration until a valid application date is available.
+
+## 6. Important Data Limitation
+
+The dataset contains the actual loan issuance date (`issue_d`) but does not provide the application submission date.
+
+This limits our ability to reconstruct certain applicant characteristics precisely as they existed at the intended prediction point.
+
+This limitation will be documented as part of the project's assumptions and data constraints.
+
+**Conclusion:** The three derived credit-history features will not be used in the primary model because their calculation relies on a date that is unavailable at the intended prediction point. This decision helps maintain consistency between the model's intended real-world use and the information supplied during model training.
+
+# Final Feature Decision Register
+## LoanTap – Personal Loan Default Prediction
+
+### 1. Objective
+
+The purpose of this register is to document the final decisions regarding which features will be used in the primary loan default prediction model.
+
+Every feature has been assessed based on:
+
+- Availability at the intended prediction point.
+- Relevance to loan default prediction.
+- Data quality and missing values.
+- Potential data leakage.
+- Redundancy and feature relationships.
+- Preprocessing requirements.
+
+### 2. Agreed prediction scenario
+
+**Model prediction point:** Immediately after loan application submission, before underwriting, verification, loan approval and loan issuance.
+
+The model should independently estimate the applicant's probability of default using information available at this point.
+
+**Key assumptions:**
+1. Applicant-provided information is available at application submission.
+2. LoanTap obtains the applicant's credit bureau report during application assessment.
+3. Verification has not yet begun at the prediction point.
+4. The actual application date is unavailable in the dataset.
+5. The raw dataset will remain unchanged. Exclusions and transformations will be applied to a separate modelling dataset.
+
+### 3. Features retained for the primary model
+
+| Feature | Description | Decision / Preprocessing |
+|---|---|---|
+| `loan_amnt` | Requested loan amount | Retain; examine distribution and outliers |
+| `term` | Applicant-selected repayment term | Retain; categorical encoding |
+| `emp_length` | Employment length | Retain; missing values as `Unknown` |
+| `home_ownership` | Home ownership status | Retain; group rare categories |
+| `log_annual_inc` | Log-transformed annual income | Retain; exclude raw `annual_inc` |
+| `purpose` | Loan purpose | Retain; categorical encoding |
+| `dti` | Debt-to-income ratio | Retain; investigate extreme values |
+| `open_acc` | Number of open credit accounts | Retain; numerical feature |
+| `total_acc` | Total number of credit accounts | Retain; examine relationship with `open_acc` |
+| `pub_rec` | Derogatory public records | Retain; numerical count |
+| `pub_rec_bankruptcies` | Public record bankruptcies | Retain; proposed missing-value imputation with 0 |
+| `mort_acc` | Number of mortgage accounts | Retain; missing-value treatment pending |
+| `revol_bal` | Revolving credit balance | Retain; investigate extreme values |
+| `revol_util` | Revolving credit utilisation | Retain; investigate suspicious values and handle missing values |
+| `application_type` | Individual or joint application | Retain; categorical encoding |
+
+**Important assumptions and considerations:**
+- `pub_rec_bankruptcies`: Zero imputation is a working assumption, not a confirmed interpretation of missing values. Validate against the source definition where possible.
+- `pub_rec` and `pub_rec_bankruptcies`: Retain both initially. Evaluate multicollinearity, particularly for Logistic Regression.
+- `open_acc` and `total_acc`: Retain both initially and evaluate their individual contributions.
+- `mort_acc`: Do not assume missing means zero.
+- `home_ownership`: Proposed grouping of `OTHER`, `NONE` and `ANY` into `Other`.
+
+### 4. Features excluded from the primary model
+
+| Feature | Reason for exclusion |
+|---|---|
+| `int_rate` | Interest rate is determined during loan pricing/underwriting and is unavailable at initial application submission |
+| `installment` | Monthly installment is calculated using proposed loan terms and interest rate; unavailable under the strict initial application prediction scenario |
+| `grade` | Lender-assigned risk classification; represents an existing risk assessment |
+| `sub_grade` | More granular lender-assigned risk classification |
+| `verification_status` | Verification takes place during underwriting, after our prediction point |
+| `initial_list_status` | Investor-side loan listing classification, not applicant-provided information |
+| `emp_title` | Very high cardinality and inconsistent free-text values |
+| `title` | Applicant-provided free-text description; less structured than `purpose` |
+| `address` | Extremely high cardinality, privacy concerns and poor generalisation potential |
+| `annual_inc` | Raw income excluded in favour of `log_annual_inc` |
+| `issue_year` | Derived from actual loan issuance date, unavailable at application submission |
+| `credit_history_months` | Calculated using actual issuance date |
+| `credit_history_years` | Calculated using actual issuance date |
+| `credit_history_group` | Derived from credit history duration calculated using actual issuance date |
+
+### 5. Features retained only for EDA or reference
+
+| Feature | Treatment | Reason |
+|---|---|---|
+| `loan_status` | Retain as target variable, not a predictor | Outcome to be predicted |
+| `issue_d` | Retain for EDA/reference, exclude as predictor | Actual loan issuance date; unavailable at application submission |
+| `issue_year` | Retain for historical analysis, exclude as predictor | Derived from actual issuance date |
+| `earliest_cr_line` | Retain in raw dataset for reference; not included as a predictor in the current model | Application date is missing, so valid application-time credit history duration cannot be calculated |
+| `annual_inc` | Retain in raw dataset for reference and EDA | Use `log_annual_inc` as the model representation |
+| `emp_title`, `title`, `address` | Preserve in raw dataset | Excluded from primary model; may support other analyses |
+
+### 6. Target variable treatment
+
+The target variable is `loan_status`.
+
+| Original value | Binary encoding |
+|---|---:|
+| Fully Paid | 0 |
+| Charged Off | 1 |
+
+The target must be separated from predictor variables before preprocessing.
+
+### 7. Important data limitations
+
+**Missing application date**
+
+The dataset contains `issue_d`, the actual issuance date, but not the application submission date. This prevents accurate calculation of credit-history duration at the intended prediction point.
+
+**Credit bureau availability**
+
+The use of credit bureau variables assumes LoanTap obtains the report during application assessment. This assumption should be validated against the intended real-world workflow.
+
+**Missing-value assumptions**
+
+The decision to impute missing `pub_rec_bankruptcies` values with zero requires validation. Other missing-value treatments, particularly for `mort_acc`, will be decided during preprocessing.
+
+### 8. Preprocessing principles
+
+1. Preserve the original raw dataset.
+2. Create a separate modelling dataset containing only approved predictors and the target.
+3. Handle missing values using documented strategies.
+4. Investigate outliers before deciding on treatment.
+5. Apply categorical encoding where required.
+6. Scale numerical features depending on the selected algorithm.
+7. Fit preprocessing transformations using training data only to avoid data leakage.
+8. Evaluate multicollinearity for models sensitive to correlated predictors.
+9. Keep the test dataset untouched until model evaluation.
+
+### 9. Final decision
+
+The 15 features listed in Section 3 form our initial predictor shortlist. `loan_status` is the target variable.
+
+Excluded features will remain in the original dataset wherever appropriate, but will not be passed into the primary model.
+
+These decisions establish the feature-selection baseline for the next phase: data preprocessing and preparation for modelling.
+
+The feature shortlist may be revisited if later validation reveals data-quality issues, redundancy or poor predictive contribution.
+
 
